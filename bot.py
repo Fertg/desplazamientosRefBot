@@ -21,19 +21,30 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def check_auth(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.text == CLAVE_ACCESO:
+        # MENSAJE DE TRANQUILIDAD Y PRIVACIDAD
+        aviso_privacidad = (
+            "🛡️ *AVISO DE PRIVACIDAD*\n"
+            "Este bot ha sido diseñado para procesar tus desplazamientos de forma efímera:\n\n"
+            "1️⃣ *Sin Base de Datos:* No guardamos tu DNI, nombre ni firma.\n"
+            "2️⃣ *Memoria Temporal:* Los datos solo residen en la memoria mientras rellenas el formulario.\n"
+            "3️⃣ *Borrado Automático:* Al finalizar o cancelar, toda tu información se elimina por completo.\n\n"
+            "✅ *Acceso concedido.*"
+        )
+        await update.message.reply_text(aviso_privacidad, parse_mode='Markdown')
         return await mostrar_menu_categorias(update)
-    await update.message.reply_text("❌ Código incorrecto.")
+    
+    await update.message.reply_text("❌ Código incorrecto. Inténtalo de nuevo:")
     return AUTH
 
 async def mostrar_menu_categorias(update):
     botones = [['AMISTOSO', 'DIP. BA', 'DIP. CC'], ['JUDEX', 'JUDEX CON DIETA', 'NACIONAL']]
     markup = ReplyKeyboardMarkup(botones, one_time_keyboard=True, resize_keyboard=True)
-    await update.message.reply_text("✅ Selecciona el tipo de PDF:", reply_markup=markup)
+    await update.message.reply_text("📋 Selecciona el tipo de PDF a generar:", reply_markup=markup)
     return CATEGORIA_SELECCION
 
 async def get_categoria_seleccion(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['categoria_tipo'] = update.message.text
-    await update.message.reply_text("📝 Categoría a escribir en el PDF (Ej: 1ª Div. Nacional):", reply_markup=ReplyKeyboardRemove())
+    await update.message.reply_text("📝 Categoría interna (Ej: 1ª Div. Nacional):", reply_markup=ReplyKeyboardRemove())
     return CAT_PDF
 
 async def get_cat_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -109,7 +120,7 @@ async def get_firma(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await photo_file.download_to_drive(path)
     context.user_data['firma_path'] = path
     
-    await update.message.reply_text("⏳ Generando PDF...")
+    await update.message.reply_text("⏳ Generando PDF y limpiando sesión...")
     ruta_pdf = generar_pdf(context.user_data)
     
     if ruta_pdf:
@@ -118,24 +129,27 @@ async def get_firma(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Preguntar si quiere otro
         markup = ReplyKeyboardMarkup([['SÍ', 'NO']], one_time_keyboard=True, resize_keyboard=True)
-        await update.message.reply_text("✅ ¿Deseas generar otro desplazamiento?", reply_markup=markup)
+        await update.message.reply_text("✅ PDF enviado con éxito.\n¿Deseas generar otro desplazamiento?", reply_markup=markup)
         return NUEVO_TRAMITE
     else:
         await update.message.reply_text("❌ Error al generar el PDF.")
+        context.user_data.clear()
         return ConversationHandler.END
 
 async def gestionar_reinicio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     respuesta = update.message.text.upper()
+    # Limpiamos todos los datos SIEMPRE al llegar aquí para cumplir la promesa de privacidad
+    context.user_data.clear()
+    
     if respuesta == 'SÍ':
-        # Limpiamos datos anteriores excepto los que suelen ser fijos para ahorrar tiempo
-        # (Podrías mantener DNI, Nombre o Coche si quisieras)
         return await mostrar_menu_categorias(update)
     else:
-        await update.message.reply_text("👋 ¡Hasta pronto!", reply_markup=ReplyKeyboardRemove())
+        await update.message.reply_text("👋 Sesión finalizada y datos borrados. ¡Hasta pronto!", reply_markup=ReplyKeyboardRemove())
         return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🚫 Cancelado.", reply_markup=ReplyKeyboardRemove())
+    context.user_data.clear() # Limpiar al cancelar
+    await update.message.reply_text("🚫 Proceso cancelado. Datos eliminados.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
 def main():
