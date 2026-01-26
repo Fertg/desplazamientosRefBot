@@ -1,162 +1,74 @@
+import io
 import os
-from dotenv import load_dotenv
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    filters,
-    ContextTypes,
-    ConversationHandler,
-)
-from utils import generar_pdf  # Importamos tu función de utils.py
+import re
+import unicodedata
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from PyPDF2 import PdfReader, PdfWriter
+from coords import PDF_TEMPLATES
 
-# Cargar variables de entorno
-load_dotenv()
-TOKEN = os.getenv("BOT_TOKEN")
-CLAVE_ACCESO = os.getenv("ACCESO_CODE")
+# ELIMINADA LA LÍNEA QUE CAUSABA EL ERROR (from utils import generar_pdf)
 
-# Definición de estados de la conversación
-(AUTH, CATEGORIA, ENCUENTRO, FECHA, TRAYECTO_DE, TRAYECTO_A, 
- KILOMETROS, VEHICULO_INFO, MATRICULA, NOMBRE_APELLIDOS, DNI, FIRMA) = range(12)
+def limpiar_texto(texto):
+    """Elimina tildes y convierte espacios en guiones bajos."""
+    if not texto: return "info"
+    texto = unicodedata.normalize('NFD', texto).encode('ascii', 'ignore').decode('utf-8')
+    texto = re.sub(r'[^a-zA-Z0-9]+', '_', texto)
+    return texto.upper()
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Punto de inicio: Pide el código de acceso"""
-    await update.message.reply_text("🔐 Bienvenido. Introduce el código de acceso para continuar:")
-    return AUTH
-
-async def check_auth(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Verifica la clave desde la variable de entorno"""
-    if update.message.text == CLAVE_ACCESO:
-        botones = [
-            ['AMISTOSO', 'DIP. BA', 'DIP. CC'],
-            ['JUDEX', 'JUDEX CON DIETA', 'NACIONAL']
-        ]
-        markup = ReplyKeyboardMarkup(botones, one_time_keyboard=True, resize_keyboard=True)
-        await update.message.reply_text("✅ Acceso correcto. Selecciona la categoría:", reply_markup=markup)
-        return CATEGORIA
-    else:
-        await update.message.reply_text("❌ Código incorrecto. Inténtalo de nuevo:")
-        return AUTH
-
-async def get_categoria(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['categoria'] = update.message.text
-    await update.message.reply_text("📝 Introduce el Encuentro (Ej: Equipo A vs Equipo B):", reply_markup=ReplyKeyboardRemove())
-    return ENCUENTRO
-
-async def get_encuentro(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['encuentro'] = update.message.text
-    await update.message.reply_text("📅 Introduce la Fecha del encuentro (Formato: DD.MM.AAAA):")
-    return FECHA
-
-async def get_fecha(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['fecha'] = update.message.text
-    await update.message.reply_text("📍 Trayecto Recorrido: ¿Desde qué población sales?")
-    return TRAYECTO_DE
-
-async def get_trayecto_de(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['de'] = update.message.text
-    await update.message.reply_text("📍 ¿A qué población te desplazaste?")
-    return TRAYECTO_A
-
-async def get_trayecto_a(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['a'] = update.message.text
-    await update.message.reply_text("🚗 ¿Cuántos Kilómetros totales hiciste (ida y vuelta)?")
-    return KILOMETROS
-
-async def get_kilometros(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['kms'] = update.message.text
-    await update.message.reply_text("🚘 Datos del vehículo: Indica MARCA Y MODELO:")
-    return VEHICULO_INFO
-
-async def get_vehiculo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['vehiculo'] = update.message.text
-    await update.message.reply_text("🔢 Indica la MATRÍCULA del vehículo:")
-    return MATRICULA
-
-async def get_matricula(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['matricula'] = update.message.text
-    await update.message.reply_text("👤 Introduce tu Nombre y Apellidos (Para el nombre del archivo y Fdo):")
-    return NOMBRE_APELLIDOS
-
-async def get_nombre(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['nombre_completo'] = update.message.text
-    await update.message.reply_text("💳 Introduce tu número de D.N.I.:")
-    return DNI
-
-async def get_dni(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['dni'] = update.message.text
-    await update.message.reply_text("✍️ Por último, envíame una FOTO de tu firma:")
-    return FIRMA
-
-async def get_firma(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Descarga la firma, genera el PDF y lo envía"""
-    # Descargar la imagen de la firma
-    photo_file = await update.message.photo[-1].get_file()
-    if not os.path.exists('firmas'):
-        os.makedirs('firmas')
+def generar_pdf(datos):
+    categoria = datos.get('categoria', 'NACIONAL')
+    template = PDF_TEMPLATES.get(categoria)
     
-    path = f"firmas/firma_{update.message.from_user.id}.png"
-    await photo_file.download_to_drive(path)
-    context.user_data['firma_path'] = path
+    if not template:
+        print(f"Error: No hay plantilla para la categoría {categoria}")
+        return None
+
+    # 1. Crear el overlay en memoria
+    packet = io.BytesIO()
+    can = canvas.Canvas(packet, pagesize=letter)
     
-    await update.message.reply_text("⏳ Generando tu documento...")
+    can.setFont("Helvetica", 10)
+    # Escribir los datos usando las coordenadas de coords.py
+    can.drawString(template['encuentro'][0], template['encuentro'][1], datos.get('encuentro', ''))
+    can.drawString(template['fecha'][0], template['fecha'][1], datos.get('fecha', ''))
+    can.drawString(template['trayecto_de'][0], template['trayecto_de'][1], datos.get('de', ''))
+    can.drawString(template['trayecto_a'][0], template['trayecto_a'][1], datos.get('a', ''))
+    can.drawString(template['kms'][0], template['kms'][1], datos.get('kms', ''))
+    can.drawString(template['vehiculo'][0], template['vehiculo'][1], datos.get('vehiculo', ''))
+    can.drawString(template['matricula'][0], template['matricula'][1], datos.get('matricula', ''))
+    can.drawString(template['fdo_nombre'][0], template['fdo_nombre'][1], datos.get('nombre_completo', ''))
+    can.drawString(template['dni'][0], template['dni'][1], datos.get('dni', ''))
 
-    # Generar el PDF usando la función de utils.py
-    try:
-        ruta_pdf = generar_pdf(context.user_data)
-        
-        if ruta_pdf and os.path.exists(ruta_pdf):
-            # Enviar el archivo generado al usuario
-            with open(ruta_pdf, 'rb') as document:
-                await update.message.reply_document(
-                    document=document,
-                    filename=os.path.basename(ruta_pdf),
-                    caption="✅ Recibo generado con éxito."
-                )
-        else:
-            await update.message.reply_text("❌ Error: No se pudo generar el archivo.")
-    except Exception as e:
-        print(f"Error generando PDF: {e}")
-        await update.message.reply_text("❌ Ocurrió un error inesperado al generar el PDF.")
+    # Insertar la firma
+    if 'firma_path' in datos:
+        can.drawImage(datos['firma_path'], template['firma'][0], template['firma'][1], width=100, preserveAspectRatio=True, mask='auto')
 
-    return ConversationHandler.END
+    can.save()
+    packet.seek(0)
 
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Cancela la conversación actual"""
-    await update.message.reply_text("🚫 Operación cancelada.", reply_markup=ReplyKeyboardRemove())
-    return ConversationHandler.END
+    # 2. Fusionar con el PDF base
+    new_pdf = PdfReader(packet)
+    existing_pdf = PdfReader(open(template['base'], "rb"))
+    output = PdfWriter()
 
-def main():
-    if not TOKEN or not CLAVE_ACCESO:
-        print("CRITICAL ERROR: BOT_TOKEN o ACCESO_CODE no encontrados en el entorno.")
-        return
+    page = existing_pdf.pages[0]
+    page.merge_page(new_pdf.pages[0])
+    output.add_page(page)
 
-    app = Application.builder().token(TOKEN).build()
-
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
-        states={
-            AUTH: [MessageHandler(filters.TEXT & ~filters.COMMAND, check_auth)],
-            CATEGORIA: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_categoria)],
-            ENCUENTRO: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_encuentro)],
-            FECHA: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_fecha)],
-            TRAYECTO_DE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_trayecto_de)],
-            TRAYECTO_A: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_trayecto_a)],
-            KILOMETROS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_kilometros)],
-            VEHICULO_INFO: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_vehiculo)],
-            MATRICULA: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_matricula)],
-            NOMBRE_APELLIDOS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_nombre)],
-            DNI: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_dni)],
-            FIRMA: [MessageHandler(filters.PHOTO, get_firma)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    )
-
-    app.add_handler(conv_handler)
+    # 3. Formatear nombre del archivo: NACIONAL_2025.10.20_APELLIDO_NOMBRE.pdf
+    fecha_raw = datos.get('fecha', '00.00.00')
+    fecha_formateada = fecha_raw.replace("/", ".").replace("-", ".")
+    nombre_arbitro = limpiar_texto(datos.get('nombre_completo', 'USUARIO'))
     
-    print("Bot en marcha (Python 3.11 compatible)...")
-    app.run_polling()
-
-if __name__ == "__main__":
-    main()
+    nombre_archivo_final = f"{categoria}_{fecha_formateada}_{nombre_arbitro}.pdf"
+    
+    if not os.path.exists('output'): 
+        os.makedirs('output')
+    
+    ruta_salida = os.path.join('output', nombre_archivo_final)
+    
+    with open(ruta_salida, "wb") as outputStream:
+        output.write(outputStream)
+    
+    return ruta_salida
