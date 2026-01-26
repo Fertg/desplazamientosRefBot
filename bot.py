@@ -110,7 +110,14 @@ async def get_nombre(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def get_dni(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['dni'] = update.message.text
-    await update.message.reply_text("✍️ Envíame una FOTO de tu firma:")
+    mensaje_firma = (
+        "✍️ *Firma del desplazamiento*\n\n"
+        "Puedes hacerlo de dos formas:\n"
+        "1️⃣ Firma en un papel y envía una foto.\n"
+        "2️⃣ Firma con el dedo en una app de notas o dibujo, haz captura y envíala.\n\n"
+        "ℹ️ *Consejo:* Usa fondo blanco y bolígrafo oscuro para que quede mejor."
+    )
+    await update.message.reply_text(mensaje_firma, parse_mode='Markdown')
     return FIRMA
 
 async def get_firma(update: Update, context: ContextTypes.DEFAULT_TYPE):
