@@ -3,8 +3,9 @@
 PDF_TEMPLATES = {
     "NACIONAL": {
         "base": "pdf/nacional.pdf",
-        "categoria_encuentro": (220, 638),  # Fuente: Categoría del Encuentro [cite: 8]
-        "encuentro": (145, 615),           # Fuente: Encuentro [cite: 10]
+        "categoria_encuentro": (260, 500),  # Fuente: Categoría del Encuentro [cite: 8]
+        "equipoA": (150, 615),           # Fuente: Encuentro [cite: 10]
+        "equipoB": (150, 615),           # Fuente: Encuentro [cite: 10]
         "fecha": (185, 601),               # Fuente: Fecha del encuentro [cite: 11]
         "trayecto_de": (90, 574),          # Fuente: De [cite: 13]
         "trayecto_a": (210, 545),          # Fuente: a
