@@ -24,15 +24,6 @@ def generar_pdf(datos):
     packet = io.BytesIO()
     can = canvas.Canvas(packet, pagesize=letter)
     
-    # REJILLA (Comenta estas líneas cuando ya no la necesites)
-    can.setFont("Helvetica", 7)
-    can.setStrokeColorRGB(0.8, 0.8, 0.8)
-    for x in range(0, 601, 50):
-        can.line(x, 0, x, 850)
-        can.drawString(x + 2, 10, str(x))
-    for y in range(0, 851, 50):
-        can.line(0, y, 600, y)
-        can.drawString(10, y + 2, str(y))
 
     can.setFont("Helvetica", 10)
     can.setFillColorRGB(0, 0, 0)
@@ -86,7 +77,7 @@ def generar_pdf(datos):
 
     # Formato de nombre solicitado
     fecha_slug = fecha_raw.replace("/", ".").replace("-", ".")
-    nombre_archivo = f"{categoria_key}_{fecha_slug}_{limpiar_texto(datos.get('apellidos'))}_{limpiar_texto(datos.get('nombre'))}.pdf"
+    nombre_archivo = f"{categoria_key}_{fecha_slug}_{limpiar_texto(datos.get('apellidos'))}_{limpiar_texto(datos.get('nombre'))}_Firmado.pdf"
     
     os.makedirs('output', exist_ok=True)
     ruta_salida = os.path.join('output', nombre_archivo)
