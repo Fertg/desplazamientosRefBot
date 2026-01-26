@@ -56,7 +56,7 @@ def generar_pdf(datos):
             mes_texto = mes_num
         
         # El lugar se dibuja basándose en la posición del día (movido a la izquierda)
-        can.drawString(template['lugar_fecha_dia'][0] - 110, template['lugar_fecha_dia'][1], datos.get('lugar_firma', ''))
+        can.drawString(template['lugar_fecha_dia'][0] - 120, template['lugar_fecha_dia'][1], datos.get('lugar_firma', ''))
         can.drawString(template['lugar_fecha_dia'][0], template['lugar_fecha_dia'][1], dia)
         can.drawString(template['lugar_fecha_mes'][0], template['lugar_fecha_mes'][1], mes_texto)
         can.drawString(template['lugar_fecha_anio'][0], template['lugar_fecha_anio'][1], anio[-1])

@@ -14,7 +14,7 @@ PDF_TEMPLATES = {
         "matricula": (200, 350),           # Fuente: Matrícula [cite: 19]
         "fdo_nombre": (340, 170),           # Fuente: Fdo. [cite: 22]
         "dni": (370, 140),                 # Fuente: D.N.I. núm. [cite: 28]
-        "firma": (320, 210),               # Fuente: FIRMA [cite: 21]
+        "firma": (360, 210),               # Fuente: FIRMA [cite: 21]
         "lugar_fecha_dia": (360, 312),     # Fuente: a __ de __ [cite: 25, 26]
         "lugar_fecha_mes": (450, 312),
         "lugar_fecha_anio": (550, 312)
