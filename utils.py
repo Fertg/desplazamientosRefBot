@@ -24,7 +24,7 @@ def generar_pdf(datos):
     packet = io.BytesIO()
     can = canvas.Canvas(packet, pagesize=letter)
     
-    # --- COMENTAR ESTA REJILLA CUANDO TERMINES DE AJUSTAR ---
+    # REJILLA (Comenta estas líneas cuando ya no la necesites)
     can.setFont("Helvetica", 7)
     can.setStrokeColorRGB(0.8, 0.8, 0.8)
     for x in range(0, 601, 50):
@@ -33,17 +33,16 @@ def generar_pdf(datos):
     for y in range(0, 851, 50):
         can.line(0, y, 600, y)
         can.drawString(10, y + 2, str(y))
-    # -------------------------------------------------------
 
     can.setFont("Helvetica", 10)
     can.setFillColorRGB(0, 0, 0)
 
-    # 1. Datos de Equipos y Categoría
+    # 1. Equipos y Categoría
     can.drawString(template['categoria_encuentro'][0], template['categoria_encuentro'][1], datos.get('categoria_pdf_texto', ''))
     can.drawString(template['equipoA'][0], template['equipoA'][1], datos.get('equipoA', ''))
     can.drawString(template['equipoB'][0], template['equipoB'][1], datos.get('equipoB', ''))
 
-    # 2. Desglose de Fecha y Lugar
+    # 2. Fecha y Lugar desglosado
     fecha_raw = datos.get('fecha', '00.00.0000')
     can.drawString(template['fecha'][0], template['fecha'][1], fecha_raw)
     
@@ -56,13 +55,13 @@ def generar_pdf(datos):
         except:
             mes_texto = mes_num
         
-        # Población, a día de Mes de 202X
+        # El lugar se dibuja basándose en la posición del día (movido a la izquierda)
         can.drawString(template['lugar_fecha_dia'][0] - 110, template['lugar_fecha_dia'][1], datos.get('lugar_firma', ''))
         can.drawString(template['lugar_fecha_dia'][0], template['lugar_fecha_dia'][1], dia)
         can.drawString(template['lugar_fecha_mes'][0], template['lugar_fecha_mes'][1], mes_texto)
         can.drawString(template['lugar_fecha_anio'][0], template['lugar_fecha_anio'][1], anio[-1])
 
-    # 3. Datos del trayecto y coche
+    # 3. Resto de campos
     can.drawString(template['trayecto_de'][0], template['trayecto_de'][1], datos.get('de', ''))
     can.drawString(template['trayecto_a'][0], template['trayecto_a'][1], datos.get('a', ''))
     can.drawString(template['kms'][0], template['kms'][1], datos.get('kms', ''))
@@ -85,7 +84,7 @@ def generar_pdf(datos):
     page.merge_page(new_pdf.pages[0])
     output.add_page(page)
 
-    # Nombre archivo final
+    # Formato de nombre solicitado
     fecha_slug = fecha_raw.replace("/", ".").replace("-", ".")
     nombre_archivo = f"{categoria_key}_{fecha_slug}_{limpiar_texto(datos.get('apellidos'))}_{limpiar_texto(datos.get('nombre'))}.pdf"
     

@@ -13,7 +13,7 @@ CLAVE_ACCESO = os.getenv("ACCESO_CODE")
 
 # Estados de la conversación
 (AUTH, CATEGORIA_SELECCION, CAT_PDF, EQUIPO_A, EQUIPO_B, FECHA, TRAYECTO_DE, TRAYECTO_A, 
- KILOMETROS, VEHICULO_INFO, MATRICULA, LUGAR_FIRMA, APELLIDOS, NOMBRE, DNI, FIRMA) = range(16)
+ KILOMETROS, VEHICULO_INFO, MATRICULA, LUGAR_FIRMA, APELLIDOS, NOMBRE, DNI, FIRMA, NUEVO_TRAMITE) = range(17)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🔐 Bienvenido. Introduce el código de acceso:")
@@ -21,12 +21,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def check_auth(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.text == CLAVE_ACCESO:
-        botones = [['AMISTOSO', 'DIP. BA', 'DIP. CC'], ['JUDEX', 'JUDEX CON DIETA', 'NACIONAL']]
-        markup = ReplyKeyboardMarkup(botones, one_time_keyboard=True, resize_keyboard=True)
-        await update.message.reply_text("✅ Acceso correcto. Selecciona el tipo de PDF:", reply_markup=markup)
-        return CATEGORIA_SELECCION
+        return await mostrar_menu_categorias(update)
     await update.message.reply_text("❌ Código incorrecto.")
     return AUTH
+
+async def mostrar_menu_categorias(update):
+    botones = [['AMISTOSO', 'DIP. BA', 'DIP. CC'], ['JUDEX', 'JUDEX CON DIETA', 'NACIONAL']]
+    markup = ReplyKeyboardMarkup(botones, one_time_keyboard=True, resize_keyboard=True)
+    await update.message.reply_text("✅ Selecciona el tipo de PDF:", reply_markup=markup)
+    return CATEGORIA_SELECCION
 
 async def get_categoria_seleccion(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['categoria_tipo'] = update.message.text
@@ -112,9 +115,24 @@ async def get_firma(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if ruta_pdf:
         with open(ruta_pdf, 'rb') as doc:
             await update.message.reply_document(document=doc, filename=os.path.basename(ruta_pdf))
+        
+        # Preguntar si quiere otro
+        markup = ReplyKeyboardMarkup([['SÍ', 'NO']], one_time_keyboard=True, resize_keyboard=True)
+        await update.message.reply_text("✅ ¿Deseas generar otro desplazamiento?", reply_markup=markup)
+        return NUEVO_TRAMITE
     else:
         await update.message.reply_text("❌ Error al generar el PDF.")
-    return ConversationHandler.END
+        return ConversationHandler.END
+
+async def gestionar_reinicio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    respuesta = update.message.text.upper()
+    if respuesta == 'SÍ':
+        # Limpiamos datos anteriores excepto los que suelen ser fijos para ahorrar tiempo
+        # (Podrías mantener DNI, Nombre o Coche si quisieras)
+        return await mostrar_menu_categorias(update)
+    else:
+        await update.message.reply_text("👋 ¡Hasta pronto!", reply_markup=ReplyKeyboardRemove())
+        return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🚫 Cancelado.", reply_markup=ReplyKeyboardRemove())
@@ -141,6 +159,7 @@ def main():
             NOMBRE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_nombre)],
             DNI: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_dni)],
             FIRMA: [MessageHandler(filters.PHOTO, get_firma)],
+            NUEVO_TRAMITE: [MessageHandler(filters.TEXT & ~filters.COMMAND, gestionar_reinicio)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
