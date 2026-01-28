@@ -70,7 +70,7 @@ PDF_TEMPLATES = {
         "matricula": (200, 350),
         "fdo_nombre": (375, 160),
         "dni": (420, 130),
-        "firma": (360, 5),
+        "firma": (360, -5),
         "lugar_fecha_dia": (365, 312),
         "lugar_fecha_mes": (450, 312),
         "lugar_fecha_anio": (550, 312)
